@@ -7,6 +7,7 @@ use uuid::Uuid;
 use network::SystemReport;
 use serde::{Serialize, Deserialize};
 use std::fs;
+use std::path::PathBuf;
 
 pub fn main() -> iced::Result {
     tracing_subscriber::fmt::init();
@@ -102,7 +103,9 @@ enum Message {
     TogglePortForwarding(Uuid),
     PortForwardingResult(Uuid, Result<(), String>),
     ImportConfig,
+    ConfigFileSelected(Option<PathBuf>),
     ExportConfig,
+    ConfigFileToExportSelected(Option<PathBuf>),
 }
 
 impl Application for ForwarderApp {
@@ -232,34 +235,57 @@ impl Application for ForwarderApp {
                 if let Err(e) = res { f.is_active = false; f.status = format!("Error: {}", e); }
             }
             Message::ImportConfig => {
-                if let Ok(content) = fs::read_to_string("config.json") {
-                    if let Ok(configs) = serde_json::from_str::<Vec<PortForwarderConfig>>(&content) {
-                        for cfg in configs {
-                            self.port_forwarders.push(PortForwarder {
-                                id: Uuid::new_v4(),
-                                protocol: cfg.protocol,
-                                src_addr: cfg.src_addr,
-                                src_port: cfg.src_port,
-                                dst_addr: cfg.dst_addr,
-                                dst_port: cfg.dst_port,
-                                is_active: false,
-                                status: "Ready (Imported)".to_string(),
-                                stop_tx: None,
-                            });
+                return Command::perform(async move {
+                    rfd::AsyncFileDialog::new()
+                        .add_filter("JSON", &["json"])
+                        .pick_file()
+                        .await
+                        .map(|f| f.path().to_path_buf())
+                }, Message::ConfigFileSelected);
+            }
+            Message::ConfigFileSelected(path) => {
+                if let Some(p) = path {
+                    if let Ok(content) = fs::read_to_string(p) {
+                        if let Ok(configs) = serde_json::from_str::<Vec<PortForwarderConfig>>(&content) {
+                            for cfg in configs {
+                                self.port_forwarders.push(PortForwarder {
+                                    id: Uuid::new_v4(),
+                                    protocol: cfg.protocol,
+                                    src_addr: cfg.src_addr,
+                                    src_port: cfg.src_port,
+                                    dst_addr: cfg.dst_addr,
+                                    dst_port: cfg.dst_port,
+                                    is_active: false,
+                                    status: "Ready (Imported)".to_string(),
+                                    stop_tx: None,
+                                });
+                            }
                         }
                     }
                 }
             }
             Message::ExportConfig => {
-                let configs: Vec<PortForwarderConfig> = self.port_forwarders.iter().map(|f| PortForwarderConfig {
-                    protocol: f.protocol,
-                    src_addr: f.src_addr.clone(),
-                    src_port: f.src_port.clone(),
-                    dst_addr: f.dst_addr.clone(),
-                    dst_port: f.dst_port.clone(),
-                }).collect();
-                if let Ok(json) = serde_json::to_string_pretty(&configs) {
-                    let _ = fs::write("config.json", json);
+                return Command::perform(async move {
+                    rfd::AsyncFileDialog::new()
+                        .add_filter("JSON", &["json"])
+                        .set_file_name("config.json")
+                        .save_file()
+                        .await
+                        .map(|f| f.path().to_path_buf())
+                }, Message::ConfigFileToExportSelected);
+            }
+            Message::ConfigFileToExportSelected(path) => {
+                if let Some(p) = path {
+                    let configs: Vec<PortForwarderConfig> = self.port_forwarders.iter().map(|f| PortForwarderConfig {
+                        protocol: f.protocol,
+                        src_addr: f.src_addr.clone(),
+                        src_port: f.src_port.clone(),
+                        dst_addr: f.dst_addr.clone(),
+                        dst_port: f.dst_port.clone(),
+                    }).collect();
+                    if let Ok(json) = serde_json::to_string_pretty(&configs) {
+                        let _ = fs::write(p, json);
+                    }
                 }
             }
         }
