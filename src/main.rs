@@ -202,6 +202,10 @@ struct ForwarderApp {
     current_page: Page,
     language: Language,
     
+    // 资源缓存
+    logo_only: Handle,
+    logo_full: Handle,
+
     // 系统转发
     interfaces: Vec<String>,
     selected_wans: Vec<String>,
@@ -233,6 +237,7 @@ enum Message {
     RefreshInterfaces,
     // 系统监控
     RefreshSystemReport,
+    SystemReportReceived(SystemReport),
     SetRefreshInterval(u64),
     // 端口转发
     AddForwarder,
@@ -276,10 +281,15 @@ impl Application for ForwarderApp {
         let report = network::get_system_network_report();
         let default_lang = Language::Chinese;
 
+        let logo_only = Handle::from_memory(include_bytes!("../assets/images/Conduit-logoonly.png").as_slice());
+        let logo_full = Handle::from_memory(include_bytes!("../assets/images/Conduit.png").as_slice());
+
         (
             Self {
                 current_page: Page::SystemForward,
                 language: default_lang,
+                logo_only,
+                logo_full,
                 interfaces: ifaces,
                 selected_wans: active_wans,
                 lan_interface: None,
@@ -328,7 +338,10 @@ impl Application for ForwarderApp {
                 }).map(|i| i.name).collect();
             }
             Message::RefreshSystemReport => {
-                self.system_report = Some(network::get_system_network_report());
+                return Command::perform(async { network::get_system_network_report() }, Message::SystemReportReceived);
+            }
+            Message::SystemReportReceived(report) => {
+                self.system_report = Some(report);
             }
             Message::SetRefreshInterval(interval) => {
                 self.refresh_interval = interval;
@@ -513,7 +526,7 @@ impl Application for ForwarderApp {
         // 侧边栏
         let sidebar = container(
             column![
-                container(image(Handle::from_memory(include_bytes!("../assets/images/Conduit-logoonly.png").as_slice())).width(50)).width(Length::Fill).center_x(),
+                container(image(self.logo_only.clone()).width(50)).width(Length::Fill).center_x(),
                 vertical_space().height(30),
                 sidebar_button(lang.get("nav_share"), "🌐", Page::SystemForward, self.current_page),
                 sidebar_button(lang.get("nav_forward"), "🔌", Page::PortForward, self.current_page),
@@ -536,9 +549,10 @@ impl Application for ForwarderApp {
             Page::About => {
                 container(
                     column![
-                        image(Handle::from_memory(include_bytes!("../assets/images/Conduit.png").as_slice())).width(250),
+                        image(self.logo_full.clone()).width(250),
                         text(format!("v0.2.2")).size(14).style(theme::Text::Color(iced::Color::from_rgb(0.5, 0.5, 0.5))),
                         vertical_space().height(20),
+
                         text(lang.get("about_desc")).size(16),
                         vertical_space().height(30),
                         text("GitHub: github.com/xjimlinx/Conduit").size(12),
