@@ -146,7 +146,10 @@ impl container::StyleSheet for ContentStyle {
 pub fn main() -> iced::Result {
     tracing_subscriber::fmt::init();
     ForwarderApp::run(Settings {
-        fonts: vec![include_bytes!("../assets/fonts/NotoSansSC-Regular.otf").as_slice().into()],
+        fonts: vec![
+            include_bytes!("../assets/fonts/NotoSansSC-Regular.otf").as_slice().into(),
+            include_bytes!("../assets/fonts/NotoSansSymbols2-Regular.ttf").as_slice().into(),
+        ],
         default_font: iced::Font::with_name("Noto Sans CJK SC"),
         ..Settings::default()
     })
