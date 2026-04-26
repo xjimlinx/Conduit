@@ -248,6 +248,8 @@ enum Message {
     ExportConfig,
     ConfigFileToExportSelected(Option<PathBuf>),
     LanguageChanged(Language),
+    EventOccurred(iced::Event),
+    Exit,
 }
 
 impl Application for ForwarderApp {
@@ -296,6 +298,20 @@ impl Application for ForwarderApp {
 
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
+            Message::Exit => return iced::window::close(iced::window::Id::MAIN),
+            Message::EventOccurred(iced::Event::Window(_, iced::window::Event::CloseRequested)) => {
+                if self.sys_active {
+                    let wans = self.selected_wans.clone();
+                    let lan = self.lan_interface.clone();
+                    if let Some(l) = lan {
+                        return Command::perform(async move {
+                            let _ = network::stop_system_forwarding(wans, &l);
+                        }, |_| Message::Exit);
+                    }
+                }
+                return iced::window::close(iced::window::Id::MAIN);
+            }
+            Message::EventOccurred(_) => {}
             Message::LanguageChanged(lang) => {
                 self.language = lang;
                 // 刷新系统状态文字
@@ -464,11 +480,13 @@ impl Application for ForwarderApp {
     }
 
     fn subscription(&self) -> iced::Subscription<Message> {
+        let mut subs = vec![iced::event::listen().map(Message::EventOccurred)];
+        
         if self.current_page == Page::SystemMonitor {
-            iced::time::every(std::time::Duration::from_secs(self.refresh_interval)).map(|_| Message::RefreshSystemReport)
-        } else {
-            iced::Subscription::none()
+            subs.push(iced::time::every(std::time::Duration::from_secs(self.refresh_interval)).map(|_| Message::RefreshSystemReport));
         }
+        
+        iced::Subscription::batch(subs)
     }
 
     fn view(&self) -> Element<Message> {
