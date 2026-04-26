@@ -513,7 +513,7 @@ impl Application for ForwarderApp {
                     column![
                         container(text("🚀").size(60).shaping(iced::widget::text::Shaping::Advanced)).padding(10),
                         text("Conduit").size(40).style(theme::Text::Color(iced::Color::from_rgb(0.2, 0.4, 0.7))),
-                        text(format!("v0.2.0")).size(14).style(theme::Text::Color(iced::Color::from_rgb(0.5, 0.5, 0.5))),
+                        text(format!("v0.2.1")).size(14).style(theme::Text::Color(iced::Color::from_rgb(0.5, 0.5, 0.5))),
                         vertical_space().height(20),
                         text(lang.get("about_desc")).size(16),
                         vertical_space().height(30),
