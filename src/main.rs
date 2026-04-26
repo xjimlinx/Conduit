@@ -358,8 +358,14 @@ impl Application for ForwarderApp {
             }
             Message::SysForwardingResult(target, res) => {
                 match res {
-                    Ok(_) => { self.sys_active = target; self.sys_status = if target { self.language.get("msg_active_bang").into() } else { self.language.get("msg_stopped").into() }; }
-                    Err(e) => self.sys_status = format!("{}: {}", if self.language == Language::Chinese { "错误" } else { "Error" }, e).into(),
+                    Ok(_) => { 
+                        self.sys_active = target; 
+                        self.sys_status = if target { self.language.get("msg_active_bang").into() } else { self.language.get("msg_stopped").into() }; 
+                    }
+                    Err(e) => {
+                        // 如果失败了，不应该翻转 sys_active 状态，保持原样
+                        self.sys_status = format!("{}: {}", if self.language == Language::Chinese { "错误" } else { "Error" }, e).into();
+                    }
                 }
             }
 
