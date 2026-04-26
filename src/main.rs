@@ -1,7 +1,8 @@
 mod network;
 
-use iced::widget::{button, column, container, row, text, text_input, vertical_space, pick_list, scrollable, checkbox};
+use iced::widget::{button, column, container, row, text, text_input, vertical_space, pick_list, scrollable, checkbox, image};
 use iced::{Alignment, Application, Command, Element, Length, Settings, Theme, theme};
+use iced::widget::image::Handle;
 use tokio::sync::watch;
 use uuid::Uuid;
 use network::SystemReport;
@@ -512,7 +513,7 @@ impl Application for ForwarderApp {
         // 侧边栏
         let sidebar = container(
             column![
-                text("CONDUIT").size(24).style(theme::Text::Color(iced::Color::from_rgb(0.2, 0.4, 0.7))),
+                container(image(Handle::from_memory(include_bytes!("../assets/images/Conduit-logoonly.png").as_slice())).width(50)).width(Length::Fill).center_x(),
                 vertical_space().height(30),
                 sidebar_button(lang.get("nav_share"), "🌐", Page::SystemForward, self.current_page),
                 sidebar_button(lang.get("nav_forward"), "🔌", Page::PortForward, self.current_page),
@@ -535,8 +536,7 @@ impl Application for ForwarderApp {
             Page::About => {
                 container(
                     column![
-                        container(text("🚀").size(60).shaping(iced::widget::text::Shaping::Advanced)).padding(10),
-                        text("Conduit").size(40).style(theme::Text::Color(iced::Color::from_rgb(0.2, 0.4, 0.7))),
+                        image(Handle::from_memory(include_bytes!("../assets/images/Conduit.png").as_slice())).width(250),
                         text(format!("v0.2.1")).size(14).style(theme::Text::Color(iced::Color::from_rgb(0.5, 0.5, 0.5))),
                         vertical_space().height(20),
                         text(lang.get("about_desc")).size(16),
