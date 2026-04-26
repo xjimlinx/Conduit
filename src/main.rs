@@ -149,6 +149,7 @@ struct ForwarderApp {
 
     // 系统监控报告
     system_report: Option<SystemReport>,
+    refresh_interval: u64,
 
     // 多端口转发列表
     port_forwarders: Vec<PortForwarder>,
@@ -168,6 +169,7 @@ enum Message {
     RefreshInterfaces,
     // 系统监控
     RefreshSystemReport,
+    SetRefreshInterval(u64),
     // 端口转发
     AddForwarder,
     RemoveForwarder(Uuid),
@@ -219,6 +221,7 @@ impl Application for ForwarderApp {
                 sys_active,
                 sys_status: if sys_active { Language::Chinese.get("status_active").to_string() } else { Language::Chinese.get("status_ready").to_string() },
                 system_report: Some(report),
+                refresh_interval: 1,
                 port_forwarders: vec![],
             },
             Command::none(),
@@ -239,6 +242,9 @@ impl Application for ForwarderApp {
             }
             Message::RefreshSystemReport => {
                 self.system_report = Some(network::get_system_network_report());
+            }
+            Message::SetRefreshInterval(interval) => {
+                self.refresh_interval = interval;
             }
             Message::DetectSystemForward => {
                 let (active, wans, failed) = network::detect_system_forward_status();
@@ -383,7 +389,7 @@ impl Application for ForwarderApp {
 
     fn subscription(&self) -> iced::Subscription<Message> {
         if self.current_page == Page::SystemMonitor {
-            iced::time::every(std::time::Duration::from_secs(1)).map(|_| Message::RefreshSystemReport)
+            iced::time::every(std::time::Duration::from_secs(self.refresh_interval)).map(|_| Message::RefreshSystemReport)
         } else {
             iced::Subscription::none()
         }
@@ -443,7 +449,12 @@ impl Application for ForwarderApp {
                         row![
                             text(lang.get("title_monitor")).size(28),
                             iced::widget::horizontal_space().width(Length::Fill),
-                            text("Auto-refreshing every 1s").size(12).style(theme::Text::Color(iced::Color::from_rgb(0.4, 0.7, 0.4))),
+                            row![
+                                text(format!("{} {}s", if lang.get("nav_share") == "网络共享" { "刷新频率:" } else { "Interval:" }, self.refresh_interval)).size(12),
+                                button("1s").on_press(Message::SetRefreshInterval(1)).style(if self.refresh_interval == 1 { theme::Button::Primary } else { theme::Button::Secondary }),
+                                button("5s").on_press(Message::SetRefreshInterval(5)).style(if self.refresh_interval == 5 { theme::Button::Primary } else { theme::Button::Secondary }),
+                                button("10s").on_press(Message::SetRefreshInterval(10)).style(if self.refresh_interval == 10 { theme::Button::Primary } else { theme::Button::Secondary }),
+                            ].spacing(5).align_items(Alignment::Center),
                             button(lang.get("btn_refresh")).on_press(Message::RefreshSystemReport),
                         ].spacing(15).align_items(Alignment::Center),
                         
