@@ -145,14 +145,7 @@ impl container::StyleSheet for ContentStyle {
 
 pub fn main() -> iced::Result {
     tracing_subscriber::fmt::init();
-    ForwarderApp::run(Settings {
-        fonts: vec![
-            include_bytes!("../assets/fonts/NotoSansSC-Regular.otf").as_slice().into(),
-            include_bytes!("../assets/fonts/NotoSansSymbols2-Regular.ttf").as_slice().into(),
-        ],
-        default_font: iced::Font::with_name("Noto Sans CJK SC"),
-        ..Settings::default()
-    })
+    ForwarderApp::run(Settings::default())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -476,7 +469,7 @@ impl Application for ForwarderApp {
             let is_selected = page == current_page;
             button(
                 row![
-                    text(icon).size(16),
+                    text(icon).size(16).shaping(iced::widget::text::Shaping::Advanced),
                     text(label).size(14),
                 ]
                 .spacing(10)
@@ -514,7 +507,7 @@ impl Application for ForwarderApp {
             Page::About => {
                 container(
                     column![
-                        container(text("🚀").size(60)).padding(10),
+                        container(text("🚀").size(60).shaping(iced::widget::text::Shaping::Advanced)).padding(10),
                         text("Conduit").size(40).style(theme::Text::Color(iced::Color::from_rgb(0.2, 0.4, 0.7))),
                         text(format!("v0.2.0")).size(14).style(theme::Text::Color(iced::Color::from_rgb(0.5, 0.5, 0.5))),
                         vertical_space().height(20),
@@ -622,7 +615,7 @@ impl Application for ForwarderApp {
                     ].spacing(10),
                     
                     container(row![
-                        text("🔔").size(14),
+                        text("🔔").size(14).shaping(iced::widget::text::Shaping::Advanced),
                         text(&self.sys_status).size(13),
                     ].spacing(10).align_items(Alignment::Center)).padding(10).style(theme::Container::Box),
                     
@@ -649,8 +642,8 @@ impl Application for ForwarderApp {
                         ].spacing(10).align_items(Alignment::Center),
                         row![
                             text(format!("● {}", &f.status)).size(12).style(theme::Text::Color(if f.is_active { iced::Color::from_rgb(0.2, 0.7, 0.2) } else { iced::Color::from_rgb(0.6, 0.6, 0.6) })).width(Length::Fill),
-                            button(if f.is_active { "⏹ Stop" } else { "▶ Start" }).on_press(Message::TogglePortForwarding(f.id)).style(if f.is_active { theme::Button::Destructive } else { theme::Button::Primary }).padding([5, 15]),
-                            button("🗑").on_press(Message::RemoveForwarder(f.id)).style(theme::Button::Secondary).padding([5, 10])
+                            button(if f.is_active { text("⏹ Stop").shaping(iced::widget::text::Shaping::Advanced) } else { text("▶ Start").shaping(iced::widget::text::Shaping::Advanced) }).on_press(Message::TogglePortForwarding(f.id)).style(if f.is_active { theme::Button::Destructive } else { theme::Button::Primary }).padding([5, 15]),
+                            button(text("🗑").shaping(iced::widget::text::Shaping::Advanced)).on_press(Message::RemoveForwarder(f.id)).style(theme::Button::Secondary).padding([5, 10])
                         ].spacing(10).align_items(Alignment::Center)
                     ].spacing(10).padding(15)).style(theme::Container::Box))
                 });
@@ -659,7 +652,7 @@ impl Application for ForwarderApp {
                     row![
                         text(lang.get("title_forward")).size(28), 
                         iced::widget::horizontal_space().width(Length::Fill), 
-                        button(text(format!("➕ {}", lang.get("btn_add_new")))).on_press(Message::AddForwarder).style(theme::Button::Primary).padding(10),
+                        button(text(format!("➕ {}", lang.get("btn_add_new"))).shaping(iced::widget::text::Shaping::Advanced)).on_press(Message::AddForwarder).style(theme::Button::Primary).padding(10),
                         button(lang.get("btn_import")).on_press(Message::ImportConfig).padding(10),
                         button(lang.get("btn_export")).on_press(Message::ExportConfig).padding(10),
                     ].spacing(10).align_items(Alignment::Center), 
