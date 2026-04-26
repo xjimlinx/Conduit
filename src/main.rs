@@ -381,6 +381,14 @@ impl Application for ForwarderApp {
         Command::none()
     }
 
+    fn subscription(&self) -> iced::Subscription<Message> {
+        if self.current_page == Page::SystemMonitor {
+            iced::time::every(std::time::Duration::from_secs(5)).map(|_| Message::RefreshSystemReport)
+        } else {
+            iced::Subscription::none()
+        }
+    }
+
     fn view(&self) -> Element<Message> {
         let lang = self.language;
         let nav = row![
@@ -406,45 +414,63 @@ impl Application for ForwarderApp {
             }
             Page::SystemMonitor => {
                 if let Some(report) = &self.system_report {
-                    let section = |title: &str, items: &Vec<String>| {
+                    let section_card = |title: String, items: &Vec<String>| {
                         let content: Element<Message> = if items.is_empty() {
-                            text("None").size(12).style(theme::Text::Color(iced::Color::from_rgb(0.5, 0.5, 0.5))).into()
+                            text("No active data").size(12).style(theme::Text::Color(iced::Color::from_rgb(0.5, 0.5, 0.5))).into()
                         } else {
-                            let elements: Vec<Element<Message>> = items.iter().map(|i| text(i).size(11).into()).collect();
-                            column(elements).spacing(2).into()
+                            let elements: Vec<Element<Message>> = items.iter().map(|i| 
+                                container(text(i).size(11).font(iced::Font::MONOSPACE))
+                                    .padding([2, 5])
+                                    .into()
+                            ).collect();
+                            column(elements).spacing(4).into()
                         };
 
-                        column![
-                            text(title).size(18).style(theme::Text::Color(iced::Color::from_rgb(0.2, 0.5, 0.8))),
+                        let card: Element<Message> = container(column![
+                            text(title).size(16).style(theme::Text::Color(iced::Color::from_rgb(0.2, 0.4, 0.7))),
+                            vertical_space().height(8),
                             content
-                        ].spacing(5)
+                        ])
+                        .width(Length::Fill)
+                        .padding(15)
+                        .style(theme::Container::Box)
+                        .into();
+                        
+                        card
                     };
 
                     column![
                         row![
-                            text(lang.get("title_monitor")).size(25),
+                            text(lang.get("title_monitor")).size(28),
                             iced::widget::horizontal_space().width(Length::Fill),
+                            text("Auto-refreshing every 5s").size(12).style(theme::Text::Color(iced::Color::from_rgb(0.4, 0.7, 0.4))),
                             button(lang.get("btn_refresh")).on_press(Message::RefreshSystemReport),
-                        ].align_items(Alignment::Center),
+                        ].spacing(15).align_items(Alignment::Center),
                         
-                        row![
-                            text(lang.get("label_ip_forward")),
+                        container(row![
+                            text(lang.get("label_ip_forward")).size(16),
+                            iced::widget::horizontal_space().width(10),
                             text(if report.ip_forward_enabled { lang.get("label_enabled") } else { lang.get("label_disabled") })
-                                .style(theme::Text::Color(if report.ip_forward_enabled { iced::Color::from_rgb(0.0, 0.7, 0.0) } else { iced::Color::from_rgb(0.7, 0.0, 0.0) }))
-                        ].spacing(10),
+                                .size(14)
+                                .style(theme::Text::Color(if report.ip_forward_enabled { iced::Color::from_rgb(0.2, 0.6, 0.2) } else { iced::Color::from_rgb(0.7, 0.2, 0.2) }))
+                        ].align_items(Alignment::Center))
+                        .padding(10)
+                        .style(theme::Container::Box),
 
                         scrollable(column![
-                            section(lang.get("monitor_active_flows"), &report.active_connections),
-                            vertical_space().height(10),
-                            section(lang.get("monitor_nat_rules"), &report.nat_masquerade),
-                            vertical_space().height(10),
-                            section(lang.get("monitor_port_rules"), &report.port_forwards),
-                            vertical_space().height(10),
-                            section(lang.get("monitor_listen_ports"), &report.listening_ports),
-                        ].spacing(15)).height(Length::Fill),
-                    ].spacing(15).into()
+                            section_card(lang.get("monitor_active_flows").to_string(), &report.active_connections),
+                            section_card(lang.get("monitor_nat_rules").to_string(), &report.nat_masquerade),
+                            section_card(lang.get("monitor_port_rules").to_string(), &report.port_forwards),
+                            section_card(lang.get("monitor_listen_ports").to_string(), &report.listening_ports),
+                        ].spacing(20)).height(Length::Fill),
+                    ].spacing(20).into()
                 } else {
-                    text("Loading report...").into()
+                    container(text("Loading System Report...").size(20))
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .center_x()
+                        .center_y()
+                        .into()
                 }
             }
             Page::SystemForward => {
