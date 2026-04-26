@@ -53,6 +53,7 @@ impl Language {
             (Language::Chinese, "msg_starting") => "正在启动...",
             (Language::Chinese, "msg_stopped") => "已停止",
             (Language::Chinese, "msg_active_bang") => "活跃!",
+            (Language::Chinese, "about_desc") => "一个简单易用的网络工具，让开发板联网和端口转发变得更轻松。",
             
             (Language::English, "nav_share") => "Network Share",
             (Language::English, "nav_forward") => "Port Forwarders",
@@ -88,6 +89,7 @@ impl Language {
             (Language::English, "msg_starting") => "Starting...",
             (Language::English, "msg_stopped") => "Stopped",
             (Language::English, "msg_active_bang") => "Active!",
+            (Language::English, "about_desc") => "A simple and easy-to-use network utility that makes dev-board networking and port forwarding a breeze.",
             _ => "Unknown",
         }
     }
@@ -431,9 +433,9 @@ impl Application for ForwarderApp {
             Page::About => {
                 column![
                     text("Conduit").size(40),
-                    text("Version 0.1.0").size(18),
+                    text("Version 0.2.0").size(18),
                     vertical_space().height(20),
-                    text("A high-performance network utility built with Rust.").size(16),
+                    text(lang.get("about_desc")).size(16),
                     text("GitHub: github.com/xjimlinx/Conduit").size(12),
                     text("Built with Iced & Tokio").size(12),
                 ].spacing(10).align_items(Alignment::Center).into()
