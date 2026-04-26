@@ -383,7 +383,7 @@ impl Application for ForwarderApp {
 
     fn subscription(&self) -> iced::Subscription<Message> {
         if self.current_page == Page::SystemMonitor {
-            iced::time::every(std::time::Duration::from_secs(5)).map(|_| Message::RefreshSystemReport)
+            iced::time::every(std::time::Duration::from_secs(1)).map(|_| Message::RefreshSystemReport)
         } else {
             iced::Subscription::none()
         }
@@ -443,7 +443,7 @@ impl Application for ForwarderApp {
                         row![
                             text(lang.get("title_monitor")).size(28),
                             iced::widget::horizontal_space().width(Length::Fill),
-                            text("Auto-refreshing every 5s").size(12).style(theme::Text::Color(iced::Color::from_rgb(0.4, 0.7, 0.4))),
+                            text("Auto-refreshing every 1s").size(12).style(theme::Text::Color(iced::Color::from_rgb(0.4, 0.7, 0.4))),
                             button(lang.get("btn_refresh")).on_press(Message::RefreshSystemReport),
                         ].spacing(15).align_items(Alignment::Center),
                         
