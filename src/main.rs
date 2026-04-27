@@ -57,6 +57,10 @@ impl Language {
             (Language::Chinese, "about_desc") => "一个简单易用的网络工具，让开发板联网和端口转发变得更轻松。",
             (Language::Chinese, "label_current_share") => "当前共享信息",
             (Language::Chinese, "label_active_iface") => "活跃接口",
+            (Language::Chinese, "status_running") => "正在运行",
+            (Language::Chinese, "status_invalid_port") => "无效端口",
+            (Language::Chinese, "status_stopped") => "已停止",
+            (Language::Chinese, "status_imported") => "已导入",
             
             (Language::English, "nav_share") => "Network Share",
             (Language::English, "nav_forward") => "Port Forwarders",
@@ -95,6 +99,10 @@ impl Language {
             (Language::English, "about_desc") => "A simple and easy-to-use network utility that makes dev-board networking and port forwarding a breeze.",
             (Language::English, "label_current_share") => "Current Share Info",
             (Language::English, "label_active_iface") => "Active Interface",
+            (Language::English, "status_running") => "Running",
+            (Language::English, "status_invalid_port") => "Invalid port",
+            (Language::English, "status_stopped") => "Stopped",
+            (Language::English, "status_imported") => "Imported",
             _ => "Unknown",
         }
     }
@@ -198,7 +206,7 @@ struct PortForwarder {
     dst_addr: String,
     dst_port: String,
     is_active: bool,
-    status: String,
+    status: Cow<'static, str>,
     stop_tx: Option<watch::Sender<bool>>,
 }
 
@@ -335,6 +343,18 @@ impl Application for ForwarderApp {
                 let status_key = if self.sys_active { "status_active" } else { "status_ready" };
                 // 如果当前正在显示某些临时消息（如错误提示），简单刷新为就绪/活跃状态
                 self.sys_status = self.language.get(status_key).into();
+
+                // 同时刷新所有端口转发项的状态显示
+                for f in &mut self.port_forwarders {
+                    if f.is_active {
+                        f.status = self.language.get("status_running").into();
+                    } else if f.status.contains("Error") || f.status.contains("错误") {
+                        // 错误信息保持原样，或者简单重置为停止状态
+                        f.status = self.language.get("status_stopped").into();
+                    } else {
+                        f.status = self.language.get("status_ready").into();
+                    }
+                }
             }
             Message::SwitchPage(page) => self.current_page = page,
             Message::RefreshInterfaces => {
@@ -410,7 +430,7 @@ impl Application for ForwarderApp {
             Message::AddForwarder => {
                 self.port_forwarders.push(PortForwarder {
                     id: Uuid::new_v4(), protocol: Protocol::TCP, src_addr: "0.0.0.0".to_string(), src_port: "".to_string(),
-                    dst_addr: "127.0.0.1".to_string(), dst_port: "".to_string(), is_active: false, status: self.language.get("status_ready").to_string(), stop_tx: None,
+                    dst_addr: "127.0.0.1".to_string(), dst_port: "".to_string(), is_active: false, status: self.language.get("status_ready").into(), stop_tx: None,
                 });
             }
             Message::RemoveForwarder(id) => {
@@ -426,22 +446,25 @@ impl Application for ForwarderApp {
             Message::DstPortChanged(id, port) => if let Some(f) = self.port_forwarders.iter_mut().find(|f| f.id == id) { f.dst_port = port; }
             Message::TogglePortForwarding(id) => {
                 if let Some(f) = self.port_forwarders.iter_mut().find(|f| f.id == id) {
-                    if f.is_active { if let Some(tx) = f.stop_tx.take() { let _ = tx.send(true); } f.is_active = false; f.status = "Stopped".to_string(); } 
+                    if f.is_active { if let Some(tx) = f.stop_tx.take() { let _ = tx.send(true); } f.is_active = false; f.status = self.language.get("status_stopped").into(); } 
                     else {
                         if let (Ok(sp), Ok(dp)) = (f.src_port.parse::<u16>(), f.dst_port.parse::<u16>()) {
-                            let (tx, rx) = watch::channel(false); f.stop_tx = Some(tx); f.is_active = true; f.status = "Running".to_string();
+                            let (tx, rx) = watch::channel(false); f.stop_tx = Some(tx); f.is_active = true; f.status = self.language.get("status_running").into();
                             let s = f.src_addr.clone(); let d = f.dst_addr.clone(); let p = f.protocol;
                             return Command::perform(async move {
                                 let res = if p == Protocol::TCP { network::start_tcp_forward(s, sp, d, dp, rx).await }
                                          else { network::start_udp_forward(s, sp, d, dp, rx).await };
                                 res.map_err(|e| e.to_string())
                             }, move |res| Message::PortForwardingResult(id, res));
-                        } else { f.status = "Invalid port".to_string(); }
+                        } else { f.status = self.language.get("status_invalid_port").into(); }
                     }
                 }
             }
             Message::PortForwardingResult(id, res) => if let Some(f) = self.port_forwarders.iter_mut().find(|f| f.id == id) {
-                if let Err(e) = res { f.is_active = false; f.status = format!("Error: {}", e); }
+                if let Err(e) = res { 
+                    f.is_active = false; 
+                    f.status = format!("{}: {}", if self.language == Language::Chinese { "错误" } else { "Error" }, e).into(); 
+                }
             }
             Message::ImportConfig => {
                 return Command::perform(async move {
@@ -465,7 +488,7 @@ impl Application for ForwarderApp {
                                     dst_addr: cfg.dst_addr,
                                     dst_port: cfg.dst_port,
                                     is_active: false,
-                                    status: format!("{} (Imported)", self.language.get("status_ready")),
+                                    status: format!("{} ({})", self.language.get("status_ready"), self.language.get("status_imported")).into(),
                                     stop_tx: None,
                                 });
                             }
@@ -706,7 +729,7 @@ impl Application for ForwarderApp {
                             text_input("Src IP", &f.src_addr).on_input(move |v| Message::SrcAddrChanged(f.id, v)).width(Length::Fill),
                             text(":"),
                             text_input("Port", &f.src_port).on_input(move |v| Message::SrcPortChanged(f.id, v)).width(70),
-                            text(" ➔ ").size(18),
+                            text(" ➔ ").size(18).shaping(iced::widget::text::Shaping::Advanced),
                             text_input("Dst IP", &f.dst_addr).on_input(move |v| Message::DstAddrChanged(f.id, v)).width(Length::Fill),
                             text(":"),
                             text_input("Port", &f.dst_port).on_input(move |v| Message::DstPortChanged(f.id, v)).width(70)
